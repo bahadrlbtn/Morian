@@ -1,0 +1,21 @@
+{
+  "name": "Morian - API Orchestrator",
+  "nodes": [
+    {"id":"webhook","name":"Stock Research Webhook","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[0,0],"parameters":{"httpMethod":"POST","path":"stock-research","responseMode":"responseNode"}},
+    {"id":"normalize","name":"Normalize Request","type":"n8n-nodes-base.code","typeVersion":2,"position":[220,0],"parameters":{"jsCode":"const b = $json.body ?? $json; const operation = ['analyze','compare','screen'].includes(b.operation) ? b.operation : 'compare'; const tickers = (b.tickers ?? (b.ticker ? [b.ticker] : [])).map(x => String(x).trim().toUpperCase()); const universe=b.universe??null; if (!tickers.length&&!universe) throw new Error('ticker(s) or universe is required'); return [{json:{operation:universe?'screen':operation,tickers,universe,strategy:b.strategy ?? null,filters:b.filters ?? [],limit:b.limit??null}}];"}},
+    {"id":"switch","name":"Operation","type":"n8n-nodes-base.switch","typeVersion":3,"position":[440,0],"parameters":{"rules":{"values":[{"conditions":{"conditions":[{"leftValue":"={{$json.operation}}","rightValue":"analyze","operator":{"type":"string","operation":"equals"}}]}},{"conditions":{"conditions":[{"leftValue":"={{$json.operation}}","rightValue":"compare","operator":{"type":"string","operation":"equals"}}]}}]},"options":{"fallbackOutput":"extra"}}},
+    {"id":"analyze","name":"Analyze Stock","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[680,-160],"parameters":{"url":"={{$env.STOCK_API_URL + '/api/stocks/' + $json.tickers[0]}}","options":{"timeout":120000}}},
+    {"id":"compare","name":"Compare Stocks","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[680,0],"parameters":{"method":"POST","url":"={{$env.STOCK_API_URL + '/api/compare'}}","sendBody":true,"contentType":"raw","rawContentType":"application/json","body":"={{JSON.stringify({tickers:$json.tickers})}}","options":{"timeout":300000}}},
+    {"id":"screen","name":"Screen Stocks","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[680,160],"parameters":{"method":"POST","url":"={{$env.STOCK_API_URL + '/api/screen'}}","sendBody":true,"contentType":"raw","rawContentType":"application/json","body":"={{JSON.stringify({tickers:$json.tickers,universe:$json.universe,strategy:$json.strategy,filters:$json.filters,limit:$json.limit})}}","options":{"timeout":600000}}},
+    {"id":"respond","name":"Return Calculated JSON","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.4,"position":[940,0],"parameters":{"respondWith":"json","responseBody":"={{$json}}"}}
+  ],
+  "connections": {
+    "Stock Research Webhook":{"main":[[{"node":"Normalize Request","type":"main","index":0}]]},
+    "Normalize Request":{"main":[[{"node":"Operation","type":"main","index":0}]]},
+    "Operation":{"main":[[{"node":"Analyze Stock","type":"main","index":0}],[{"node":"Compare Stocks","type":"main","index":0}],[{"node":"Screen Stocks","type":"main","index":0}]]},
+    "Analyze Stock":{"main":[[{"node":"Return Calculated JSON","type":"main","index":0}]]},
+    "Compare Stocks":{"main":[[{"node":"Return Calculated JSON","type":"main","index":0}]]},
+    "Screen Stocks":{"main":[[{"node":"Return Calculated JSON","type":"main","index":0}]]}
+  },
+  "settings":{"executionOrder":"v1"},"active":false
+}

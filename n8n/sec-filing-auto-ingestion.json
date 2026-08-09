@@ -1,0 +1,14 @@
+{
+  "name":"SEC Filing - Automatic Qdrant Ingestion",
+  "nodes":[
+    {"id":"webhook","name":"SEC Filing Ingest Webhook","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[0,0],"parameters":{"httpMethod":"POST","path":"sec-filing-ingest","responseMode":"responseNode"}},
+    {"id":"validate","name":"Validate Filing Metadata","type":"n8n-nodes-base.code","typeVersion":2,"position":[220,0],"parameters":{"jsCode":"const b=$json.body??$json;const required=['ticker','company','filing_type','filing_date','fiscal_year','source'];for(const k of required)if(b.metadata?.[k]===undefined)throw new Error('Missing metadata: '+k);if(!b.text)throw new Error('Missing filing text');return [{json:{text:b.text,metadata:b.metadata,collection:'filings_'+b.metadata.ticker.toLowerCase()}}];"}},
+    {"id":"loader","name":"Text Document Loader","type":"@n8n/n8n-nodes-langchain.documentDefaultDataLoader","typeVersion":1,"position":[460,180],"parameters":{"dataType":"json","jsonData":"={{$json.text}}","options":{"metadata":"={{$json.metadata}}"}}},
+    {"id":"split","name":"Recursive Filing Splitter","type":"@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter","typeVersion":1,"position":[420,340],"parameters":{"chunkSize":1200,"chunkOverlap":180}},
+    {"id":"embed","name":"Embeddings Provider","type":"@n8n/n8n-nodes-langchain.embeddingsOpenAi","typeVersion":1.2,"position":[680,340],"parameters":{"options":{}}},
+    {"id":"qdrant","name":"Qdrant Filing Collection","type":"@n8n/n8n-nodes-langchain.vectorStoreQdrant","typeVersion":1.2,"position":[700,0],"parameters":{"mode":"insert","qdrantCollection":{"__rl":true,"value":"={{$json.collection}}","mode":"name"},"options":{}}},
+    {"id":"respond","name":"Ingestion Response","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.4,"position":[920,0],"parameters":{"respondWith":"json","responseBody":"={{ {indexed:true,collection:$json.collection,metadata:$json.metadata} }}"}}
+  ],
+  "connections":{"SEC Filing Ingest Webhook":{"main":[[{"node":"Validate Filing Metadata","type":"main","index":0}]]},"Validate Filing Metadata":{"main":[[{"node":"Qdrant Filing Collection","type":"main","index":0}]]},"Text Document Loader":{"ai_document":[[{"node":"Qdrant Filing Collection","type":"ai_document","index":0}]]},"Recursive Filing Splitter":{"ai_textSplitter":[[{"node":"Text Document Loader","type":"ai_textSplitter","index":0}]]},"Embeddings Provider":{"ai_embedding":[[{"node":"Qdrant Filing Collection","type":"ai_embedding","index":0}]]},"Qdrant Filing Collection":{"main":[[{"node":"Ingestion Response","type":"main","index":0}]]}},
+  "settings":{"executionOrder":"v1"},"active":false
+}

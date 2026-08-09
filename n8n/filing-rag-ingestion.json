@@ -1,0 +1,14 @@
+{
+  "name":"Stock Filings - Qdrant Ingestion",
+  "nodes":[
+    {"id":"manual","name":"Manual Ingestion","type":"n8n-nodes-base.manualTrigger","typeVersion":1,"position":[0,0],"parameters":{}},
+    {"id":"drive","name":"Download Filing From Drive","type":"n8n-nodes-base.googleDrive","typeVersion":3,"position":[220,0],"parameters":{"operation":"download","fileId":{"__rl":true,"value":"={{$json.file_id}}","mode":"id"},"options":{}}},
+    {"id":"metadata","name":"Attach Filing Metadata","type":"n8n-nodes-base.set","typeVersion":3.4,"position":[440,0],"parameters":{"assignments":{"assignments":[{"name":"metadata.ticker","value":"={{$json.ticker}}","type":"string"},{"name":"metadata.company","value":"={{$json.company}}","type":"string"},{"name":"metadata.filing_type","value":"={{$json.filing_type}}","type":"string"},{"name":"metadata.filing_date","value":"={{$json.filing_date}}","type":"string"},{"name":"metadata.fiscal_year","value":"={{$json.fiscal_year}}","type":"number"},{"name":"metadata.source","value":"={{$json.source ?? 'Google Drive'}}","type":"string"}]},"options":{}}},
+    {"id":"loader","name":"PDF Document Loader","type":"@n8n/n8n-nodes-langchain.documentBinaryInputLoader","typeVersion":1,"position":[680,160],"parameters":{"options":{"metadata":"={{$json.metadata}}"}}},
+    {"id":"split","name":"Recursive Text Splitter","type":"@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter","typeVersion":1,"position":[600,320],"parameters":{"chunkSize":1200,"chunkOverlap":180}},
+    {"id":"embed","name":"Configurable Embeddings","type":"@n8n/n8n-nodes-langchain.embeddingsOpenAi","typeVersion":1.2,"position":[820,320],"parameters":{"options":{}}},
+    {"id":"qdrant","name":"Qdrant Filing Store","type":"@n8n/n8n-nodes-langchain.vectorStoreQdrant","typeVersion":1.2,"position":[880,0],"parameters":{"mode":"insert","qdrantCollection":{"__rl":true,"value":"={{'filings_' + $json.metadata.ticker.toLowerCase()}}","mode":"name"},"options":{}}}
+  ],
+  "connections":{"Manual Ingestion":{"main":[[{"node":"Download Filing From Drive","type":"main","index":0}]]},"Download Filing From Drive":{"main":[[{"node":"Attach Filing Metadata","type":"main","index":0}]]},"Attach Filing Metadata":{"main":[[{"node":"Qdrant Filing Store","type":"main","index":0}]]},"PDF Document Loader":{"ai_document":[[{"node":"Qdrant Filing Store","type":"ai_document","index":0}]]},"Recursive Text Splitter":{"ai_textSplitter":[[{"node":"PDF Document Loader","type":"ai_textSplitter","index":0}]]},"Configurable Embeddings":{"ai_embedding":[[{"node":"Qdrant Filing Store","type":"ai_embedding","index":0}]]}},
+  "settings":{"executionOrder":"v1"},"active":false
+}

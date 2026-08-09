@@ -1,0 +1,11 @@
+{
+  "name":"Stock Analysis - Guarded AI Commentary",
+  "nodes":[
+    {"id":"webhook","name":"Commentary Webhook","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[0,0],"parameters":{"httpMethod":"POST","path":"stock-commentary","responseMode":"responseNode"}},
+    {"id":"validate","name":"Validate Calculated Payload","type":"n8n-nodes-base.code","typeVersion":2,"position":[220,0],"parameters":{"jsCode":"const b=$json.body??$json;if(!b.ticker||!b.metrics||!b.scores)throw new Error('Calculated analysis JSON is required');return [{json:{...b,guardrail:'Use only supplied JSON. Never calculate, estimate or invent numbers. Null means unavailable. Do not give buy/sell advice.'}}];"}},
+    {"id":"backend","name":"Generate Guarded Commentary","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[460,0],"parameters":{"method":"POST","url":"={{$env.STOCK_API_URL + '/api/stocks/' + $json.ticker + '/commentary'}}","options":{"timeout":180000}}},
+    {"id":"respond","name":"Return Commentary","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.4,"position":[700,0],"parameters":{"respondWith":"json","responseBody":"={{$json}}"}}
+  ],
+  "connections":{"Commentary Webhook":{"main":[[{"node":"Validate Calculated Payload","type":"main","index":0}]]},"Validate Calculated Payload":{"main":[[{"node":"Generate Guarded Commentary","type":"main","index":0}]]},"Generate Guarded Commentary":{"main":[[{"node":"Return Commentary","type":"main","index":0}]]}},
+  "settings":{"executionOrder":"v1"},"active":false
+}
