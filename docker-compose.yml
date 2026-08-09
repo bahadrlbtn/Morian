@@ -1,0 +1,54 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /app/data/stocks.db
+      N8N_BASE_URL: http://n8n:5678
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["stock_data:/app/data"]
+    depends_on: [qdrant, n8n]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp"]
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports: ["127.0.0.1:6333:6333"]
+    volumes: ["qdrant_data:/qdrant/storage"]
+    security_opt: ["no-new-privileges:true"]
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: n8n
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: n8n
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes: ["redis_data:/data"]
+    command: ["redis-server","--appendonly","yes"]
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    ports: ["127.0.0.1:5678:5678"]
+    environment:
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: n8n
+      DB_POSTGRESDB_USER: n8n
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      QUEUE_BULL_REDIS_HOST: redis
+      STOCK_API_URL: http://api:8000
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:?Set N8N_ENCRYPTION_KEY in .env}
+    volumes: ["n8n_data:/home/node/.n8n"]
+    depends_on: [postgres, redis, qdrant]
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  stock_data:
+  qdrant_data:
+  postgres_data:
+  redis_data:
+  n8n_data:

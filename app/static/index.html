@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#070a16"><meta name="description" content="Morian — AI-assisted, deterministic US equity research platform">
+  <title>Morian · AI Equity Intelligence</title>
+  <link rel="stylesheet" href="/static/styles.css"><link rel="stylesheet" href="/static/scorelab.css">
+</head>
+<body>
+  <div class="space" aria-hidden="true"><i></i><i></i><i></i></div>
+  <aside id="sidebar">
+    <div class="brand"><div class="brand-mark"><span></span></div><div><b>MORIAN</b><small>AI EQUITY INTELLIGENCE</small></div></div>
+    <nav aria-label="Ana navigasyon">
+      <button class="active" data-view="dashboard"><span>◈</span> Dashboard</button>
+      <button data-view="screener"><span>⌁</span> Stock Screener</button>
+      <button data-view="analysis"><span>◎</span> Stock Analysis</button>
+      <button data-view="comparison"><span>⋈</span> Comparison</button>
+      <button data-view="watchlist"><span>✦</span> Watchlist</button>
+    </nav>
+    <div class="side-foot"><div class="pulse"></div><div><b>Research engine online</b><small>Deterministic calculations</small></div></div>
+  </aside>
+
+  <main>
+    <header class="topbar"><button id="menu" aria-label="Menüyü aç">☰</button><div class="breadcrumb"><span>MORIAN</span><b id="crumb">/ DASHBOARD</b></div><div class="top-actions"><span id="ai-state" class="chip">AI CHECKING</span><span class="chip live"><i></i> SEC LIVE</span></div></header>
+
+    <section id="dashboard-view" class="view active-view">
+      <div class="hero">
+        <div><p class="kicker">ORBITAL MARKET RESEARCH</p><h1>Signal through<br><em>the financial noise.</em></h1><p class="hero-copy">Morian blends official filings, deterministic scoring and grounded AI commentary into one deep-space research console.</p><div class="hero-actions"><button class="primary" data-jump="screener">Explore the universe <span>→</span></button><button class="ghost" data-jump="comparison">Compare companies</button></div></div>
+        <div class="orbital" aria-hidden="true"><div class="planet"><div class="core">M</div></div><div class="orbit o1"><i></i></div><div class="orbit o2"><i></i></div><div class="orbit o3"><i></i></div><span class="orbit-label l1">QUALITY</span><span class="orbit-label l2">GROWTH</span><span class="orbit-label l3">VALUE</span></div>
+      </div>
+      <div class="metrics" id="dashboard-metrics"><article><small>COMPANIES</small><strong>—</strong><span>tracked universe</span></article><article><small>FINANCIAL PERIODS</small><strong>—</strong><span>structured statements</span></article><article><small>CALCULATED METRICS</small><strong>—</strong><span>deterministic facts</span></article><article><small>WATCHLISTS</small><strong>—</strong><span>saved research sets</span></article></div>
+      <div class="dashboard-grid"><section class="glass"><div class="section-head"><div><p class="kicker">CURRENT ORBIT</p><h2>Top ranked companies</h2></div><button class="text-btn" data-jump="comparison">Open comparison →</button></div><div id="leaders" class="leaders"><p class="empty">Loading rankings…</p></div></section><section class="glass system-card"><p class="kicker">SYSTEM STATUS</p><h2>Evidence first.</h2><div class="system-row"><span>Fundamentals</span><b>SEC CompanyFacts</b></div><div class="system-row"><span>Calculations</span><b>Deterministic</b></div><div class="system-row"><span>Missing data</span><b>Never zero-filled</b></div><div class="system-row"><span>Advice mode</span><b>Research only</b></div></section></div>
+    </section>
+
+    <section id="research-view" class="view hidden">
+      <div class="page-head"><div><p class="kicker" id="mode-kicker">DEEP SCAN</p><h1 id="mode-title">Stock <em>Screener.</em></h1><p id="mode-copy">Scan a universe with evidence-aware fundamental strategies.</p></div><div class="mode-glyph">⌁</div></div>
+      <section class="command glass">
+        <label class="ticker-field"><span>TICKERS</span><input id="tickers" value="AAPL, MSFT, GOOGL, META" placeholder="e.g. AAPL, MSFT, GOOGL"></label>
+        <label id="universe-field"><span>UNIVERSE</span><select id="universe"><option value="">Custom tickers</option><option value="nasdaq100">NASDAQ-100 companies</option></select></label>
+        <label id="strategy-field"><span>PRIORITY</span><select id="strategy"><option value="">Balanced review</option><option value="quality">Strong business</option><option value="growth">Fast growth</option><option value="value">Attractive price</option><option value="quality_growth">Quality and growth</option><option value="garp">Growth at a reasonable price</option><option value="cash_flow_compounders">Strong cash generation</option></select></label>
+        <button id="run" class="primary">Initiate scan <span>→</span></button>
+      </section>
+      <div id="progress" class="progress hidden"><div><i></i></div><span>Preparing research engine…</span></div>
+      <section class="glass result-panel"><div class="section-head"><div><p class="kicker">SIMPLE RESULTS</p><h2 id="result-title">Company results</h2><p class="result-help">Each card summarizes the company's main strength, key risk, and evidence reliability.</p></div><div><span id="result-count" class="chip">0 RESULTS</span><button id="export" class="ghost small" disabled>Export CSV</button></div></div><p id="screen-message" class="screen-message hidden"></p><div id="rows" class="result-cards"><div class="empty-state"><b>No results yet</b><span>Enter ticker symbols and select “Start analysis.”</span></div></div></section>
+      <section class="query glass"><div><p class="kicker">MORIAN QUERY ROUTER</p><h2>Ask the evidence.</h2><p>Numeric questions use structured data. Filing questions route to Qdrant RAG.</p></div><div class="query-control"><input id="question" placeholder="What are Microsoft's key filing risks?"><button id="ask" class="primary">Ask Morian</button></div><pre id="answer" class="hidden"></pre></section>
+      <section id="detail" class="detail glass hidden"></section>
+    </section>
+
+    <section id="watchlist-view" class="view hidden">
+      <div class="page-head"><div><p class="kicker">PERSONAL CONSTELLATIONS</p><h1>Your research <em>watchlists.</em></h1><p>Group companies into focused research universes.</p></div><div class="mode-glyph">✦</div></div>
+      <section class="command glass watch-command"><label><span>NEW WATCHLIST</span><input id="watch-name" placeholder="Core Compounders"></label><button id="create-watch" class="primary">Create constellation</button></section>
+      <section class="glass"><div class="section-head"><div><p class="kicker">SAVED UNIVERSES</p><h2>Watchlists</h2></div><span id="watch-count" class="chip">0 LISTS</span></div><div id="watchlists" class="watchlists"><p class="empty">No watchlists yet.</p></div></section>
+    </section>
+  </main>
+  <div id="toasts" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body></html>

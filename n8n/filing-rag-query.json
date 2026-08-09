@@ -1,0 +1,15 @@
+{
+  "name":"Stock Filing - Citation RAG Query",
+  "nodes":[
+    {"id":"webhook","name":"Stock RAG Webhook","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[0,0],"parameters":{"httpMethod":"POST","path":"stock-rag","responseMode":"responseNode"}},
+    {"id":"guard","name":"RAG Guardrail","type":"n8n-nodes-base.code","typeVersion":2,"position":[220,0],"parameters":{"jsCode":"const b=$json.body??$json;if(!b.ticker||!b.input)throw new Error('ticker and input required');return [{json:{...b,collection:b.collection??'filings_'+b.ticker.toLowerCase(),prompt:'Answer only from retrieved filing excerpts. Cite filing_type, filing_date and source for each material claim. If context is insufficient, say so. Never invent financial numbers.'}}];"}},
+    {"id":"chain","name":"Filing QA Chain","type":"@n8n/n8n-nodes-langchain.chainRetrievalQa","typeVersion":1.6,"position":[520,0],"parameters":{"query":"={{$json.prompt + '\nQuestion: ' + $json.input}}"}},
+    {"id":"model","name":"Configurable Chat Model","type":"@n8n/n8n-nodes-langchain.lmChatOpenAi","typeVersion":1.2,"position":[440,220],"parameters":{"options":{"temperature":0}}},
+    {"id":"retriever","name":"Filing Retriever","type":"@n8n/n8n-nodes-langchain.retrieverVectorStore","typeVersion":1,"position":[680,220],"parameters":{"topK":6}},
+    {"id":"qdrant","name":"Ticker Qdrant Store","type":"@n8n/n8n-nodes-langchain.vectorStoreQdrant","typeVersion":1.2,"position":[780,380],"parameters":{"qdrantCollection":{"__rl":true,"value":"={{$json.collection}}","mode":"name"},"options":{}}},
+    {"id":"embed","name":"Query Embeddings","type":"@n8n/n8n-nodes-langchain.embeddingsOpenAi","typeVersion":1.2,"position":[900,540],"parameters":{"options":{}}},
+    {"id":"respond","name":"RAG Response","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.4,"position":[820,0],"parameters":{"respondWith":"json","responseBody":"={{$json}}"}}
+  ],
+  "connections":{"Stock RAG Webhook":{"main":[[{"node":"RAG Guardrail","type":"main","index":0}]]},"RAG Guardrail":{"main":[[{"node":"Filing QA Chain","type":"main","index":0}]]},"Configurable Chat Model":{"ai_languageModel":[[{"node":"Filing QA Chain","type":"ai_languageModel","index":0}]]},"Ticker Qdrant Store":{"ai_vectorStore":[[{"node":"Filing Retriever","type":"ai_vectorStore","index":0}]]},"Query Embeddings":{"ai_embedding":[[{"node":"Ticker Qdrant Store","type":"ai_embedding","index":0}]]},"Filing Retriever":{"ai_retriever":[[{"node":"Filing QA Chain","type":"ai_retriever","index":0}]]},"Filing QA Chain":{"main":[[{"node":"RAG Response","type":"main","index":0}]]}},
+  "settings":{"executionOrder":"v1"},"active":false
+}
