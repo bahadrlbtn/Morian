@@ -1,11 +1,9 @@
-# n8n içe aktarma
+# n8n workflow setup
 
-1. Beş JSON dosyasını n8n'de **Import from File** ile içe aktarın.
-2. `STOCK_API_URL` ortam değişkenini ayarlayın (Docker'da genellikle `http://api:8000`).
-3. Google Drive, Qdrant ve embedding credential'larını ilgili düğümlerde seçin.
-4. Filing ingestion girdisinde `file_id`, `ticker`, `company`, `filing_type`, `filing_date`, `fiscal_year`, `source` alanlarını sağlayın.
-5. Önce test execution çalıştırın; sonra webhook'u aktive edin.
+1. Import the five JSON files with **Import from File**.
+2. Set `STOCK_API_URL` (normally `http://api:8000` in Docker).
+3. Configure your own Google Drive, Qdrant, embedding, and chat credentials in n8n. No credentials are included in this repository.
+4. Supply `file_id`, `ticker`, `company`, `filing_type`, `filing_date`, `fiscal_year`, and `source` to filing-ingestion workflows.
+5. Run a manual test before activating any webhook or schedule.
 
-`sec-filing-auto-ingestion.json` ve `filing-rag-query.json`, backend'in `/api/filings/{ticker}/ingest` ve `/api/query` uçları için gereken webhook yollarını sağlar.
-
-Mevcut export kök dizinde değiştirilmeden bırakılmıştır. Yeni orkestratör sayısal sorguları backend'e gönderir. Belge soruları için mevcut Retrieval QA hattı kullanılabilir; prompt'a “yalnızca retrieved context, sayı üretme” kuralı eklenmelidir.
+`sec-filing-auto-ingestion.json` and `filing-rag-query.json` provide the webhook paths used by the backend filing-ingestion and query routes. Numeric questions go to the deterministic backend; filing questions can use the retrieval workflow.

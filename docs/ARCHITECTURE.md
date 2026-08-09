@@ -1,84 +1,45 @@
-# Morian mimarisi ve dönüşüm planı
+# Morian architecture
 
-## 1. Mevcut mimari
+## System boundaries
 
-İçe aktarılan `Stock Q&A Workflow` 16 düğümlü iki hat barındırıyor:
+Morian separates numeric research from document retrieval:
 
-1. İndeksleme: Manual Trigger → Google Drive download → Binary Document Loader → Recursive Character Text Splitter → OpenAI Embeddings → Qdrant insert.
-2. Soru-cevap: Webhook/manual chat → Retrieval QA Chain. Zincir, Qdrant retriever ve OpenAI Chat Model alt düğümlerini kullanıyor → Respond to Webhook.
+- FastAPI handles structured data, deterministic calculations, scoring, screening, jobs, watchlists, and exports.
+- SQLite stores application data for a single-instance deployment.
+- n8n orchestrates optional filing ingestion and AI commentary.
+- Qdrant stores filing text for retrieval; it is never the source of numeric financial facts.
+- An optional LLM receives calculated JSON or retrieved filing context and must not invent numbers.
 
-Güçlü tarafı belge tabanlı Q&A'nın hazır olmasıdır. Sınırlamaları: sayısal/veri sorularını RAG'den ayıran bir router yok; yapılandırılmış finansal depo, deterministik hesaplama, veri soyu, skorlama, tarama ve fiyat adaptörü bulunmuyor. Sticky note'ta Supabase yazmasına rağmen gerçek düğüm Qdrant; ayrıca collection adı sabit olduğu için şirket/filing metadata disiplini eksik.
+## Data sources
 
-## 2. Değiştirilen kısımlar
+- SEC CompanyFacts for annual and quarterly GAAP facts
+- SEC submissions and archives for 10-K and 10-Q filings
+- Yahoo Finance chart endpoint as a replaceable price-history fallback
+- Nasdaq data for the NASDAQ-100 universe
 
-- Mevcut dosya değişmeden tutuldu; geri dönüş ve karşılaştırma mümkündür.
-- Sayısal analiz FastAPI servisindeki deterministik motora taşındı.
-- n8n, senkron hesaplayıcı olmaktan çok ingestion/orchestration katmanı olarak konumlandı.
-- Belge indekslemede `ticker`, `company`, `filing_type`, `filing_date`, `fiscal_year`, `source` metadata zorunlu hale getirildi.
-- LLM'ye yalnızca backend'in ürettiği JSON verilir; prompt açıkça yeni sayı üretmesini yasaklar.
+SEC access uses an identified User-Agent, rate limiting, retry/backoff, timeouts, and disk caching.
 
-## 3. Yeni mimari
+## Calculation pipeline
 
-```mermaid
-flowchart LR
-  UI[Dashboard] --> API[FastAPI]
-  N8N[n8n Orchestrator] --> API
-  API --> SEC[SEC CompanyFacts]
-  API --> MKT[Yahoo Chart fallback]
-  API --> CALC[Deterministic Metrics]
-  CALC --> SCORE[Scores and Flags]
-  SCORE --> DB[(SQLite / PostgreSQL)]
-  N8N --> DOC[10-K / 10-Q Documents]
-  DOC --> Q[(Qdrant)]
-  UI --> ROUTER{Question type}
-  ROUTER -->|numeric| API
-  ROUTER -->|filing text| Q
-  Q --> LLM[Configurable LLM]
-  API --> LLM
-```
+1. Normalize annual and discrete quarterly SEC facts.
+2. Build TTM values only when four valid quarters are available.
+3. Fetch price history independently.
+4. Calculate metrics with explicit null handling.
+5. Score quality, growth, valuation, financial health, and momentum.
+6. Produce a final score only when weighted evidence coverage reaches 60%.
+7. Generate deterministic strengths and cautions from the same evidence.
 
-Yerel kurulum SQLite kullanır. Üretimde aynı tablo sınırları PostgreSQL'e taşınmalıdır. Qdrant, yapılandırılmış rakamların ana kaynağı değildir.
+Missing components are excluded and reduce coverage. They are never converted to zero.
 
-## 4. Ücretsiz veri kaynakları
+## Application structure
 
-- SEC CompanyFacts: resmi yıllık/çeyreklik GAAP gerçekleri; ana temel veri kaynağı.
-- SEC Submissions/Archives: filing listesi, 10-K/10-Q HTML ve XBRL belgeleri.
-- Yahoo Finance chart endpoint: fiyat geçmişi için anahtar gerektirmeyen fallback. SLA yoktur; adaptör değiştirilebilir tutulmuştur.
-- NASDAQ-100 evreni: üretimde Nasdaq'ın yayımladığı liste veya güvenilir endeks bileşeni kaynağı günlük cache'lenmelidir.
+- `app/data`: SEC, market, universe, and database adapters
+- `app/finance`: calculations, metrics, scoring, quality, and decision support
+- `app/services.py`: analysis orchestration
+- `app/main.py`: HTTP API and operational middleware
+- `app/static`: responsive single-page interface
+- `n8n`: importable workflows without embedded credentials
 
-SEC rate limitlerine saygı için kimlikli User-Agent, disk cache, timeout ve hata aktarımı eklenmiştir. Geniş evren taraması n8n batch/schedule ile seri veya kontrollü paralel çalıştırılmalıdır.
+## Deployment boundary
 
-## 5. Database schema
-
-`companies`, `financial_statements`, `financial_metrics`, `prices`, `scores`, `analysis`, `filings`, `watchlists`, `watchlist_items` tabloları `app/data/database.py` içinde oluşturulur. Ham statement değerleri dönem bazında JSON tutulurken sorgulanacak normalize metrikler ayrı satırlardır. Her metrikte source/period/filing_date/updated_at alanı vardır. `null`, bilinmeyen veri demektir.
-
-## 6. Scoring modeli
-
-Final ağırlıklar config'dedir: Quality 30, Growth 25, Valuation 20, Health 15, Momentum 10. Alt skorlar 0–100 lineer eşik fonksiyonlarıyla oluşturulur. Quality dağılımı istenen 15/15/20/15/15/10/10 yapısını kullanır. 3Y/5Y büyüme tek yıllık büyümeden daha ağırdır. Valuation; earnings/FCF yield, P/E, EV/EBITDA ve ROIC+büyüme kalite ayarlamasını birlikte kullanır.
-
-Eksik bileşen skor dışı kalır ve ayrı `coverage` alanı döner. Kategori kapsamı %40'ın, ağırlıklı toplam kapsam %60'ın altındaysa skor `null` olur ve şirket sıralamaya alınmaz. Bu, eksikliği sıfır saymadan düşük kanıtlı yüksek skorları engeller. Tarihsel değerleme, beş yıllık fiyat geçmişi ve yıllık SEC EPS verisinden şirketin kendi P/E medyanına göre hesaplanır.
-
-## 7. n8n workflow tasarımı
-
-- `stock-analysis-orchestrator.json`: webhook girdisini `analyze`, `compare`, `screen` işlemlerine ayırıp backend'e yollar.
-- `filing-rag-ingestion.json`: Google Drive belgesini metadata ile Qdrant'a indeksleyen mevcut hattın güvenli devamıdır.
-- `ai-commentary.json`: hesaplanmış JSON'u değiştirilebilir LLM provider'a yorumlatmak için sözleşme/prompt şablonudur.
-
-Credential kimlikleri export dosyasına gömülmemiştir. İçe aktardıktan sonra n8n arayüzünden credential seçilmelidir.
-
-## 8. Backend yapısı
-
-- `app/data`: SEC, market ve SQL adaptörleri.
-- `app/finance`: saf hesaplama, metrik, skorlama ve red flag fonksiyonları.
-- `app/services.py`: veri toplama → hesaplama → saklama orkestrasyonu.
-- `app/main.py`: analiz, karşılaştırma, screener ve strateji API'leri.
-
-Veri sağlayıcı/LLM değişimi adaptör sınırında yapılır. LLM provider ayarları `.env` içinde bulunur; temel analiz LLM olmadan tamamen çalışır.
-
-## 9. Frontend yapısı
-
-Tek sayfalı, responsive dashboard ticker karşılaştırma, preset screener, sıralama, skor kapsamı ve risk bayraklarını sunar. Sayfa isimleri navigasyonda hazırdır. İlk teslimat çalışan Dashboard/Comparison/Screener çekirdeğine odaklanır; Watchlist tabloları backend şemasında hazırdır. Grafikler için yıllık/çeyreklik seriler analiz API'sinde döndüğünden ECharts/Plotly bağlanabilir.
-
-## Üretim sertleştirme notları
-
-Geniş evren taramasında job queue, PostgreSQL, dağıtık Redis cache, SEC istek bütçesi, retry/backoff, metriğe özgü XBRL taxonomy testleri ve gözlemlenebilirlik eklenmelidir. Banka/sigorta şirketleri için ayrı scoring profili gerekir. Forward P/E/PEG ve kesin tarihsel valuation, SEC'den doğrudan gelmediğinden ücretsiz sağlayıcı bulunduğunda provider alanıyla eklenmeli; bulunmadığında `null` kalmalıdır.
+Default local and Docker configurations bind user-facing ports to localhost. A public deployment requires an authenticated HTTPS reverse proxy, exact host/CORS configuration, managed secrets, and private n8n/Qdrant services. SQLite is intended for one API instance; horizontal scaling requires a PostgreSQL-backed application data adapter.

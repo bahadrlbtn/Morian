@@ -1,12 +1,12 @@
-# Tamamlama yol haritası
+# Delivery roadmap
 
-İlk talepteki 19 madde, aşağıdaki 6 teslimat adımında kapatılıyor. Bir adımın tamamlanması yalnızca kodun yazılması değil, test ve kullanım akışının da doğrulanması anlamına gelir.
+All planned core delivery stages are complete:
 
-1. **Otomatik hisse evreni ve batch tarama — tamamlandı.** Resmi Nasdaq kaynağı, günlük cache, `nasdaq100` API seçimi ve limitli tarama.
-2. **Finansal tablo doğruluğu ve kapsam — tamamlandı.** Ayrık çeyrek filtresi, TTM, Q4 türetme, taxonomy fallback'leri ve veri kalite raporu.
-3. **Tarihsel değerleme ve shareholder metrikleri — tamamlandı.** 5 yıllık fiyat bazlı P/E medyanı, dividend growth, buyback yield ve total shareholder yield.
-4. **SEC filing ingestion otomasyonu ve query router — tamamlandı.** EDGAR 10-K/10-Q listeleme/indirme, Qdrant metadata, sayısal-vs-belgesel yönlendirme ve kaynak zorunlu RAG prompt'u.
-5. **Production job sistemi ve operasyon — tamamlandı.** Kalıcı batch jobs, progress, retry/backoff, SEC rate limiting, cache ve Docker Compose.
-6. **Ürün tamamlama ve kabul testi — tamamlandı.** Watchlist, grafikler, veri kalite görünümü, CSV export, birleşik soru kutusu ve genişletilmiş testler.
+1. **Automated universe and batch screening:** NASDAQ-100 source, daily cache, limited screening, and persistent jobs.
+2. **Financial-statement quality:** discrete-quarter handling, TTM construction, Q4 derivation, taxonomy fallbacks, and evidence-quality reporting.
+3. **Valuation and shareholder metrics:** historical valuation, dividend growth, buyback yield, and shareholder yield.
+4. **SEC filing ingestion and query routing:** EDGAR filing retrieval, Qdrant metadata, and structured-versus-document routing.
+5. **Operations:** retry/backoff, SEC rate limiting, disk cache, Docker Compose, readiness checks, and production headers.
+6. **Product completion:** watchlists, charts, CSV export, plain-English decisions, custom scoring, and automated tests.
 
-İlk not defterindeki geliştirme adımları tamamlandı. Ücretli veri gerektiren alanlar uydurulmaz; ücretsiz ve güvenilir kaynak bulunamayan forward P/E/PEG gibi değerler `null` kalır. Banka ve sigorta şirketlerinde genel sanayi ROIC/borç skorlarının ekonomik anlamı sınırlı olduğundan veri kalite uyarısı ve sektör profili sonraki model kalibrasyonlarında ayrıca ele alınmalıdır.
+Values that require unavailable or unreliable data remain null rather than being invented. Financial-company scoring remains a future calibration area because industrial-company ROIC and leverage rules can be misleading for banks and insurers.

@@ -1,46 +1,67 @@
 # Morian · AI Equity Intelligence
 
-ABD hisseleri için SEC verisini esas alan, finansal metrikleri deterministik hesaplayan ve n8n/Qdrant RAG hattını koruyan yapay zekâ destekli araştırma platformu.
+Morian is an AI-assisted US equity research platform built around official SEC filings, deterministic financial metrics, explainable scoring, and optional n8n/Qdrant RAG workflows.
 
-## Hızlı başlangıç
+## Features
+
+- Single-stock analysis, comparisons, and NASDAQ-100 screening
+- Plain-English strengths, risks, and evidence coverage
+- Deterministic quality, growth, valuation, financial-health, and momentum scores
+- Custom per-company category and metric weights through Morian Score Lab
+- Watchlists, historical charts, CSV export, and persistent screening jobs
+- Optional OpenAI or local Ollama commentary
+- SEC filing ingestion and retrieval workflows for n8n and Qdrant
+
+## Local setup
+
+Requirements: Python 3.11+ and internet access for SEC and market data.
+
+```powershell
+git clone https://github.com/bahadrlbtn/Morian.git
+cd Morian
+Copy-Item .env.example .env
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). API documentation is available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+
+Before making sustained SEC requests, replace the example `SEC_USER_AGENT` in `.env` with an application name and a valid contact email, as required by SEC fair-access guidance.
+
+AI commentary is disabled by default. Keep `LLM_PROVIDER=none`, or configure either OpenAI or a local Ollama server.
+
+## Docker Compose
+
+Copy the environment template and set strong, unique values for the two required secrets:
 
 ```powershell
 Copy-Item .env.example .env
-python -m venv .venv
-.\.venv\Scripts\pip install -r requirements.txt
-.\.venv\Scripts\python -m uvicorn app.main:app --reload
+# Edit POSTGRES_PASSWORD and N8N_ENCRYPTION_KEY in .env
+docker compose config
+docker compose up --build -d
 ```
 
-Arayüz: `http://127.0.0.1:8000` — API dokümanı: `http://127.0.0.1:8000/docs`
+For safety, the API, n8n, and Qdrant ports bind to `127.0.0.1` by default. Do not expose n8n or Qdrant directly to the internet. Use an authenticated HTTPS reverse proxy for any public deployment.
 
-SEC, otomatik isteklerde iletişim bilgisi içeren bir User-Agent ister. `.env` içindeki `SEC_USER_AGENT` değerini gerçek e-posta adresinizle değiştirin.
-
-## İlkeler
-
-- Finansal rakamlar ve puanlar yalnızca Python fonksiyonlarıyla hesaplanır.
-- Eksik değerler `null` kalır; sıfıra çevrilmez ve puanları yapay biçimde artırmaz.
-- Her alan kaynak, dönem, filing tarihi ve güncelleme zamanıyla izlenebilir.
-- Qdrant yalnızca 10-K/10-Q/rapor metinleri içindir.
-- LLM, sadece hesaplanmış JSON'u yorumlar; sayısal gerçeklerin kaynağı değildir.
-- Watchlist'ler SQLite içinde saklanır; detay ekranı tarihsel revenue/FCF ve margin grafiklerini gösterir.
-- Morian Score Lab ile kategori ve alt metrik ağırlıkları şirket bazında değiştirilebilir; “neden değerlendirilmeli / neden elenmeli” gerekçeleri deterministik kanıtlardan üretilir.
-
-AI yorumunu kullanmak istemiyorsanız `LLM_PROVIDER=none` bırakın. OpenAI için `LLM_PROVIDER=openai` ve `OPENAI_API_KEY`; tamamen yerel kullanım için `LLM_PROVIDER=ollama` ve çalışan bir Ollama sunucusu ayarlayın.
-
-Detaylı mimari ve geçiş planı için [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), API örnekleri için [docs/API.md](docs/API.md) dosyasına bakın.
-
-Tamamlanma durumu [docs/ROADMAP.md](docs/ROADMAP.md), Docker ve kabul adımları [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) içindedir.
-
-## Test
+## Tests
 
 ```powershell
-python -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Scoring/normalizasyon kuralları değiştiğinde cache'teki SEC verilerini kullanarak mevcut şirketleri yeniden hesaplamak için:
+## Documentation
 
-```powershell
-.\.venv\Scripts\python.exe -m scripts.rebuild_scores
-```
+- [API examples](docs/API.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Deployment and security](docs/DEPLOYMENT.md)
+- [Roadmap](docs/ROADMAP.md)
+- [n8n workflow setup](n8n/README.md)
 
-Kategori kapsamı `%40` altındaysa o kategori, ağırlıklı toplam veri kapsamı `%60` altındaysa Final Score `null` bırakılır. Bu şirketler sıralamaya dahil edilmez; eksik veri yüksek puana dönüşmez.
+## Data and security
+
+- Financial calculations are deterministic; the LLM does not create numeric facts.
+- Missing values remain null and cannot artificially increase scores.
+- Local `.env`, databases, caches, logs, and virtual environments are ignored by Git.
+- The API is unauthenticated and intended for local use by default.
+- This software provides research support, not investment advice.

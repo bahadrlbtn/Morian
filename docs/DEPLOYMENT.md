@@ -1,41 +1,42 @@
-# Morian deployment ve kabul kontrolü
+# Deployment and security
 
-## Yerel
+## Local development
 
 ```powershell
 Copy-Item .env.example .env
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-`.env` içindeki `SEC_USER_AGENT` gerçek iletişim e-postası içermelidir.
+Set `SEC_USER_AGENT` to an application name and a valid contact email before sustained SEC access.
 
 ## Docker Compose
 
 ```powershell
 Copy-Item .env.example .env
+# Set strong POSTGRES_PASSWORD and N8N_ENCRYPTION_KEY values.
+docker compose config
 docker compose up --build -d
 ```
 
-Servisler: API `:8000`, n8n `:5678`, Qdrant `:6333`. İlk açılışta n8n owner hesabını oluşturun, `n8n/*.json` dosyalarını içe aktarın ve Google Drive/Qdrant/embedding/chat credentials seçin. Workflow'ları test ettikten sonra aktive edin.
+Compose fails closed when either required secret is empty. The API (`8000`), n8n (`5678`), and Qdrant (`6333`) bind only to localhost.
 
-Public domain kullanırken `.env` içinde `APP_ENV=production`, `ALLOWED_HOSTS=alanadiniz.com` ve `CORS_ORIGINS=https://alanadiniz.com` ayarlanmalıdır. Reverse proxy TLS/HTTPS sağlamalıdır. Varsayılan PostgreSQL ve n8n encryption değerlerini üretimde mutlaka benzersiz güçlü secret'larla değiştirin.
+## Public deployment
 
-## Kabul kontrolü
+- Keep n8n and Qdrant private.
+- Put the API behind an authenticated TLS reverse proxy.
+- Set `APP_ENV=production`.
+- Set `ALLOWED_HOSTS` to the public domain.
+- Set `CORS_ORIGINS` to the exact HTTPS frontend origin.
+- Store secrets in a managed secret store, not in source control.
+- Back up the `stock_data`, `postgres_data`, `qdrant_data`, and `n8n_data` volumes.
+- SQLite is suitable for a single API instance; use a PostgreSQL adapter before scaling the API horizontally.
 
-1. `GET /api/health` → `ok`.
-2. `GET /api/ready` → database ve statik dosya kontrolü başarılı.
-3. Dashboard'da 2–4 ticker karşılaştırması sonuçlanır.
-4. NASDAQ-100 taraması job kimliği üretir ve progress ilerler.
-5. Şirket detayında TTM/data-quality ve grafikler görünür.
-6. CSV export indirilir.
-7. `GET /api/filings/MSFT` resmi filing listesi döndürür.
-8. Ingestion workflow aktifken `POST /api/filings/MSFT/ingest?limit=1` Qdrant collection yazar.
-9. Sayısal soru `structured`, risk/metin sorusu `filing_rag` rotasına gider.
-10. `LLM_PROVIDER=none` durumunda temel analiz çalışır; arayüz AI düğmesini pasif gösterir.
+## Acceptance checklist
 
-## Operasyon notları
-
-- SQLite tek makine kurulumu içindir. Çoklu API replica hedefinde finans tabloları/job deposu PostgreSQL adaptörüne taşınmalıdır.
-- Redis ve PostgreSQL Compose içinde n8n queue/kalıcılığı için hazırdır.
-- SEC ve Yahoo cache volume içinde korunur.
-- Backup hedefleri: `stock_data`, `postgres_data`, `qdrant_data`, `n8n_data` volume'ları.
+1. `GET /api/health` returns `ok`.
+2. `GET /api/ready` reports a healthy database and static assets.
+3. A comparison of two to four tickers completes.
+4. A NASDAQ-100 job reports progress and completes.
+5. Stock details show evidence coverage and charts.
+6. CSV export downloads successfully.
+7. `LLM_PROVIDER=none` leaves deterministic analysis fully functional.
